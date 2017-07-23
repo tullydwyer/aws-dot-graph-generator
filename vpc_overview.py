@@ -103,22 +103,22 @@ def main(args):
                                     for route in route_table.routes:
                                         print('{} -> {}'.format(route.destination_cidr_block, route.gateway_id))
                                         if str(route.gateway_id).startswith('igw-'):
-                                            g.edge(subnet.cidr_block, route.gateway_id)
+                                            g.edge(subnet.cidr_block, route.gateway_id, label=route.destination_cidr_block)
                                         if str(route.nat_gateway_id).startswith('ngw-'):
                                             vpc_g.node(route.nat_gateway_id, shape='circle')
-                                            g.edge(subnet.cidr_block, route.nat_gateway_id)
+                                            g.edge(subnet.cidr_block, route.nat_gateway_id, label=route.destination_cidr_block)
                                         if str(route.egress_only_internet_gateway_id).startswith('eigw-'):
                                             vpc_g.node(route.egress_only_internet_gateway_id, shape='circle')
-                                            g.edge(subnet.cidr_block, route.egress_only_internet_gateway_id)
+                                            g.edge(subnet.cidr_block, route.egress_only_internet_gateway_id, label=route.destination_cidr_block)
                                         if str(route.gateway_id).startswith('vgw-'):
                                             vpc_g.node(route.gateway_id, shape='doublecircle')
-                                            g.edge(subnet.cidr_block, route.gateway_id)
+                                            g.edge(subnet.cidr_block, route.gateway_id, label=route.destination_cidr_block)
                                         if str(route.vpc_peering_connection_id).startswith('pcx-'):
                                             pcx = ec2.VpcPeeringConnection(route.vpc_peering_connection_id)
                                             if pcx.accepter_vpc.vpc_id == vpc.vpc_id:
-                                                g.edge(subnet.cidr_block, 'a | '+route.vpc_peering_connection_id)
+                                                g.edge(subnet.cidr_block, 'a | '+route.vpc_peering_connection_id, label=route.destination_cidr_block)
                                             else:
-                                                g.edge(subnet.cidr_block, 'r | '+route.vpc_peering_connection_id)
+                                                g.edge(subnet.cidr_block, 'r | '+route.vpc_peering_connection_id, label=route.destination_cidr_block)
 
     g.render(filename='out/'+str(args.accounts)+'.gv', view=True)
 
