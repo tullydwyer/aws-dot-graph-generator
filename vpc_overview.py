@@ -1,6 +1,7 @@
 import graphviz
 import boto3
 import re
+import logging
 
 '''
 AWS credentials need to be set roughly like the following:
@@ -10,6 +11,7 @@ source_profile = OTHER-KEY
 region = ap-southeast-2
 '''
 
+# [ltail=cluster_0 lhead=cluster_2];
 
 def getCredentialsList():  # TODO make generic
     CRED_FILE_LOCATION = 'C:\\Users\\Tully\\.aws\\credentials'
@@ -23,46 +25,63 @@ def getCredentialsList():  # TODO make generic
 
 
 def main(args):
-    print(args)
-    print(args.accounts)
-    print(args.region)
+    # Set-up Logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    logger.info(args)
+    logger.info(args.accounts)
+    logger.info(args.region)
     acc_list = []
     for acc in getCredentialsList():
         for search_term in args.accounts:
-            # print("Searching for: '"+search_term+"' in: '"+acc['name']+"'")
+            # logger.info("Searching for: '"+search_term+"' in: '"+acc['name']+"'")
             if (acc['name'].find(search_term) != -1):
                 acc_list.append(acc)
 
     temp_peer_arr = []
 
-    print(acc_list)
+    logger.info(acc_list)
 
     g = graphviz.Digraph('cluster_G', filename='cluster.gv')
     # NOTE: the subgraph name needs to begin with 'cluster' (all lowercase)
     #       so that Graphviz recognizes it as a special cluster subgraph
 
     g.attr(overlap='scale')
+    ###
+    # Account Sub-Graphs
+    ###
     for acc in acc_list:
-        print(acc)
+        logger.info(acc)
         acc_links_arr = []
         with g.subgraph(name='cluster_'+acc['id']) as acc_g:
-            acc_g.attr(color='black')
-            accname = '{} ({})'.format(acc['name'], acc['id'])
-            acc_g.attr(label=accname)
+            accname_label = '{} ({})'.format(acc['name'], acc['id'])
+            # Graph attributes
+            acc_g.attr(label=accname_label, color='black')
+
             session = boto3.Session(profile_name=acc['name'],
                                     region_name=args.region)
             ec2 = session.resource('ec2')
+            ###
+            # VPC Sub-Graphs
+            ###
             for vpc in ec2.vpcs.all():
                 with acc_g.subgraph(name='cluster_'+vpc.id) as vpc_g:
                     # Place IGW's
                     if vpc.internet_gateways.all() is not None:
                         for igw in vpc.internet_gateways.all():
-                            vpc_g.node(igw.internet_gateway_id, shape='Mdiamond')
+                            vpc_g.node(igw.internet_gateway_id,
+                                       shape='Mdiamond')
                     # Place Peering Connections's
                     if vpc.requested_vpc_peering_connections.all() is not None:
                         for pcx in vpc.requested_vpc_peering_connections.all():
-                            # print("Checking: "+pcx.requester_vpc.vpc_id+"  "+vpc.vpc_id)
-                            print("pcx status: ", pcx.status)
+                            # logger.info("Checking: "+pcx.requester_vpc.vpc_id+"  "+vpc.vpc_id)
+                            logger.info("pcx status: ", pcx.status)
                             if pcx.requester_vpc.vpc_id == vpc.vpc_id and pcx.status['Code'] == 'active':
                                 vpc_g.node('r | ' + pcx.vpc_peering_connection_id, shape='tripleoctagon')
                                 if pcx.id not in temp_peer_arr:
@@ -71,8 +90,8 @@ def main(args):
                                     g.edge('r | ' + pcx.vpc_peering_connection_id, 'a | ' + pcx.vpc_peering_connection_id, dir="both")
                     if vpc.accepted_vpc_peering_connections.all() is not None:
                         for pcx in vpc.accepted_vpc_peering_connections.all():
-                            # print("Checking: "+pcx.requester_vpc.vpc_id+"  "+vpc.vpc_id)
-                            print("pcx status: ", pcx.status)
+                            # logger.info("Checking: "+pcx.requester_vpc.vpc_id+"  "+vpc.vpc_id)
+                            logger.info("pcx status: ", pcx.status)
                             if pcx.accepter_vpc.vpc_id == vpc.vpc_id and pcx.status['Code'] == 'active':
                                 vpc_g.node('a | ' + pcx.vpc_peering_connection_id, shape='tripleoctagon')
                                 if pcx.id not in temp_peer_arr:
@@ -86,6 +105,9 @@ def main(args):
                                 vpc_name = tag['Value']
                     vpc_g.attr(color='black')
                     vpc_g.attr(label='{} ({}) | {}'.format(vpc_name, vpc.id, vpc.cidr_block))
+                    ###
+                    # Subnet Sub-Graphs
+                    ###
                     for subnet in vpc.subnets.all():
                         with vpc_g.subgraph(name='cluster_'+subnet.id) as subnet_g:
                             subnet_name = ''
@@ -96,12 +118,12 @@ def main(args):
                             subnet_g.attr(label='{} ({})'.format(subnet_name, subnet.id))
                             subnet_g.node(subnet.cidr_block)
                         for route_table in vpc.route_tables.all():
-                            print(route_table.id)
+                            logger.info(route_table.id)
                             for subnet_association in route_table.associations:
-                                print(subnet_association.subnet_id)
+                                logger.info(subnet_association.subnet_id)
                                 if subnet.id == subnet_association.subnet_id:
                                     for route in route_table.routes:
-                                        print('{} -> {}'.format(route.destination_cidr_block, route.gateway_id))
+                                        logger.info('{} -> {}'.format(route.destination_cidr_block, route.gateway_id))
                                         if str(route.gateway_id).startswith('igw-'):
                                             g.edge(subnet.cidr_block, route.gateway_id, label=route.destination_cidr_block)
                                         if str(route.nat_gateway_id).startswith('ngw-'):
@@ -120,7 +142,7 @@ def main(args):
                                             else:
                                                 g.edge(subnet.cidr_block, 'r | '+route.vpc_peering_connection_id, label=route.destination_cidr_block)
 
-    g.render(filename='out/'+str(args.accounts)+'.gv', view=True)
+    g.render(filename='out/VPC_'+str(args.accounts)+'.gv', view=True)
 
 
 if __name__ == '__main__':
