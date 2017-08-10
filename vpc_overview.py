@@ -126,6 +126,9 @@ def main(args):
                                         logger.info('{} -> {}'.format(route.destination_cidr_block, route.gateway_id))
                                         if str(route.gateway_id).startswith('igw-'):
                                             g.edge(subnet.cidr_block, route.gateway_id, label=route.destination_cidr_block)
+                                        if str(route.network_interface_id).startswith('eni-'): # Buggy TODO Fix
+                                            vpc_g.node(route.network_interface_id, shape='circle')
+                                            g.edge(subnet.cidr_block, route.network_interface_id, label=route.destination_cidr_block)
                                         if str(route.nat_gateway_id).startswith('ngw-'):
                                             vpc_g.node(route.nat_gateway_id, shape='circle')
                                             g.edge(subnet.cidr_block, route.nat_gateway_id, label=route.destination_cidr_block)
