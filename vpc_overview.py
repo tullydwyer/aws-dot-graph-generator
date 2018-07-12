@@ -4,17 +4,15 @@ import re
 import logging
 import os
 import argparse
+
 '''
-AWS credentials need to be set roughly like the following:
+AWS credentials need to be set exactly like the following for regex:
 [PROFILENAME] #ACC-ID
 role_arn = arn:aws:iam::ACC-ID:role/ROLENAME
 source_profile = OTHER-KEY
 region = ap-southeast-2
 '''
 
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
-
-# [ltail=cluster_0 lhead=cluster_2];
 
 def getCredentialsList():  # TODO make generic
     CRED_FILE_LOCATION = 'C:\\Users\\Tully\\.aws\\credentials'
