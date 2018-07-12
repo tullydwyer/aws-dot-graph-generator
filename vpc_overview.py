@@ -3,23 +3,21 @@ import boto3
 import re
 import logging
 import os
-# try Rank same!
+import argparse
+
 '''
-AWS credentials need to be set roughly like the following:
+AWS credentials need to be set exactly like the following for regex:
 [PROFILENAME] #ACC-ID
 role_arn = arn:aws:iam::ACC-ID:role/ROLENAME
 source_profile = OTHER-KEY
 region = ap-southeast-2
 '''
 
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
-# [ltail=cluster_0 lhead=cluster_2];
-
-def getCredentialsList():  # TODO make generic
-    CRED_FILE_LOCATION = 'C:\\Users\\Tully\\.aws\\credentials'
+def getCredentialsList():
+    credentials_file_location = os.path.join(os.path.expanduser('~'), '.aws/credentials')
     p = re.compile('\[\w+\]\ \#\d+')
-    with open(CRED_FILE_LOCATION, 'r') as myfile:
+    with open(credentials_file_location, 'r') as myfile:
         result_arr = []
         for name in p.findall(myfile.read()):
             temp_arr = name.replace('[', '').replace(']', '').split(' #')
