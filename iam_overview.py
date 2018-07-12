@@ -3,6 +3,7 @@ import boto3
 import re
 import logging
 from pprint import pprint
+import argparse
 
 '''
 AWS credentials need to be set roughly like the following:
