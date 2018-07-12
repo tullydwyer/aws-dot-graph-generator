@@ -16,9 +16,9 @@ region = ap-southeast-2
 # [ltail=cluster_0 lhead=cluster_2];
 
 def getCredentialsList():  # TODO make generic
-    CRED_FILE_LOCATION = 'C:\\Users\\Tully\\.aws\\credentials'
+    credentials_file_location = os.path.join(os.path.expanduser('~'), '.aws/credentials')
     p = re.compile('\[\w+\]\ \#\d+')
-    with open(CRED_FILE_LOCATION, 'r') as myfile:
+    with open(credentials_file_location, 'r') as myfile:
         result_arr = []
         for name in p.findall(myfile.read()):
             temp_arr = name.replace('[', '').replace(']', '').split(' #')
